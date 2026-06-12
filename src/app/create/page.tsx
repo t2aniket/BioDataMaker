@@ -6,6 +6,7 @@ import { Globe, ArrowLeft, ArrowRight, Save, Image as ImageIcon, Sparkles, Alert
 import { SUPPORTED_LANGUAGES, LanguageCode } from '@/i18n/config';
 import { BIODATA_FORM_SCHEMA } from '@/i18n/schema';
 import { loadDraftLocal, saveDraftLocal, syncDraftToServer, getDraftToken, setDraftToken } from '@/lib/draft';
+import { getLabel } from '@/lib/utils';
 
 function FormBuilderContent() {
   const router = useRouter();
@@ -17,9 +18,12 @@ function FormBuilderContent() {
   // State
   const [currentStep, setCurrentStep] = useState<number>(0);
   const [selectedLang, setSelectedLang] = useState<LanguageCode>('en');
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('simple-clean');
+  const [labelMode, setLabelMode] = useState<string>('both');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('en-simple-clean-free');
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [photoUrl, setPhotoUrl] = useState<string>('');
+  const [customTemplateUrl, setCustomTemplateUrl] = useState<string>('');
+  const [hasPhoto, setHasPhoto] = useState<boolean>(true);
   const [selectedSymbol, setSelectedSymbol] = useState<string>('None');
   const [dict, setDict] = useState<any>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -63,7 +67,7 @@ function FormBuilderContent() {
             const serverDraft = await res.json();
             localState = {
               language: serverDraft.selectedLanguage,
-              templateId: serverDraft.selectedTemplateId,
+              templateId: serverDraft.selectedTemplateSlug || serverDraft.selectedTemplateId,
               formData: serverDraft.formData,
               photoUrl: serverDraft.photoUrl || undefined,
             };
@@ -77,9 +81,16 @@ function FormBuilderContent() {
 
       if (localState) {
         setSelectedLang((localState.language as LanguageCode) || 'en');
-        setSelectedTemplateId(localState.templateId || 'simple-clean');
+        setLabelMode(localState.labelMode || 'both');
+        setSelectedTemplateId(localState.templateId || `${localState.language}-simple-clean-free`);
         setFormData(localState.formData || {});
         setPhotoUrl(localState.photoUrl || '');
+        setCustomTemplateUrl(localState.customTemplateUrl || '');
+        if (localState.formData?.hasPhoto) {
+          setHasPhoto(localState.formData.hasPhoto === 'true');
+        } else {
+          setHasPhoto(true);
+        }
         if (localState.formData?.selectedSymbol) {
           setSelectedSymbol(localState.formData.selectedSymbol);
         }
@@ -125,17 +136,20 @@ function FormBuilderContent() {
     const state = {
       language: selectedLang,
       templateId: selectedTemplateId,
+      labelMode,
       formData: {
         ...formData,
         selectedSymbol,
+        hasPhoto: String(hasPhoto),
         photoScale: String(photoScale),
         photoX: String(photoX),
         photoY: String(photoY),
       },
       photoUrl,
+      customTemplateUrl,
     };
     saveDraftLocal(state);
-  }, [formData, photoUrl, selectedLang, selectedTemplateId, selectedSymbol, photoScale, photoX, photoY, isLoading]);
+  }, [formData, photoUrl, selectedLang, selectedTemplateId, selectedSymbol, photoScale, photoX, photoY, isLoading, labelMode, customTemplateUrl]);
 
   // Update specific fields
   const handleInputChange = (fieldId: string, value: string) => {
@@ -180,6 +194,40 @@ function FormBuilderContent() {
     }
   };
 
+  const handleCustomTemplateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSaving(true);
+    setSaveStatus('Uploading background image...');
+
+    const fd = new FormData();
+    fd.append('photo', file);
+
+    try {
+      const res = await fetch('/api/uploads', {
+        method: 'POST',
+        body: fd,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || 'Failed to upload background image');
+        return;
+      }
+
+      const data = await res.json();
+      setCustomTemplateUrl(data.url);
+      setSaveStatus('Background uploaded successfully!');
+    } catch (err) {
+      console.error(err);
+      alert('Error uploading background image');
+    } finally {
+      setIsSaving(false);
+      setTimeout(() => setSaveStatus(''), 2000);
+    }
+  };
+
   // Remote save draft (sync to database)
   const handleSyncDraft = async () => {
     setIsSaving(true);
@@ -188,14 +236,17 @@ function FormBuilderContent() {
       const token = await syncDraftToServer({
         language: selectedLang,
         templateId: selectedTemplateId,
+        labelMode,
         formData: {
           ...formData,
           selectedSymbol,
+          hasPhoto: String(hasPhoto),
           photoScale: String(photoScale),
           photoX: String(photoX),
           photoY: String(photoY),
         },
         photoUrl,
+        customTemplateUrl,
       });
       const url = `${window.location.origin}/create?draft=${token}`;
       setShareLink(url);
@@ -231,14 +282,17 @@ function FormBuilderContent() {
       await syncDraftToServer({
         language: selectedLang,
         templateId: selectedTemplateId,
+        labelMode,
         formData: {
           ...formData,
           selectedSymbol,
+          hasPhoto: String(hasPhoto),
           photoScale: String(photoScale),
           photoX: String(photoX),
           photoY: String(photoY),
         },
         photoUrl,
+        customTemplateUrl,
       });
     } catch (err) {
       console.warn('Silent auto-sync failed:', err);
@@ -382,7 +436,7 @@ function FormBuilderContent() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-6">
             {currentSection.fields.map((field) => {
-              const label = dict[field.dictKey] || field.dictKey;
+              const label = getLabel(field.dictKey, dict, labelMode);
               const isRequired = field.required;
 
               return (
@@ -467,105 +521,204 @@ function FormBuilderContent() {
               );
             })}
 
-            {/* Custom Field: Photo Upload in Step 1 or Step 5 */}
-            {currentStep === 0 && (
+            {/* Custom Background Upload for Custom Template */}
+            {selectedTemplateId === 'custom-template-paid' && currentStep === 0 && (
               <div className="sm:col-span-2 border-t border-gray-100 pt-6 mt-2 space-y-4">
-                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <ImageIcon className="h-4 w-4 text-indigo-600" />
-                  Upload Photo (Optional)
+                <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5 text-indigo-600">
+                  <Sparkles className="h-4 w-4" />
+                  Custom Background Template (A4 Portrait)
                 </h3>
-
-                <div className="flex flex-col sm:flex-row items-center gap-6 bg-slate-50/50 border border-slate-100 p-6 rounded-2xl">
-                  {/* Photo Preview with position adjust */}
-                  <div className="h-28 w-28 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden relative flex items-center justify-center shrink-0 shadow-inner">
-                    {photoUrl ? (
+                <p className="text-xs text-gray-500">
+                  Upload an A4 portrait background image (JPG/PNG). Your biodata text will be overlaid on top of this background.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center gap-6 bg-indigo-50/35 border border-indigo-100 p-6 rounded-2xl">
+                  <div className="h-28 w-20 bg-gray-100 border border-gray-200 overflow-hidden relative flex items-center justify-center shrink-0 shadow-inner rounded-md">
+                    {customTemplateUrl ? (
                       <div className="relative w-full h-full">
                         <img
-                          src={photoUrl}
-                          alt="Uploaded Profile"
-                          className="object-cover transition-transform"
-                          style={{
-                            transform: `scale(${photoScale}) translate(${photoX}px, ${photoY}px)`,
-                            width: '100%',
-                            height: '100%',
-                          }}
+                          src={customTemplateUrl}
+                          alt="Custom Background"
+                          className="object-cover w-full h-full"
                         />
                         <button
                           type="button"
-                          onClick={() => setPhotoUrl('')}
+                          onClick={() => setCustomTemplateUrl('')}
                           className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 shadow-md cursor-pointer"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
                     ) : (
-                      <ImageIcon className="h-8 w-8 text-gray-300" />
+                      <span className="text-[10px] text-gray-400 font-bold text-center p-2">A4 Preview</span>
                     )}
                   </div>
-
                   <div className="space-y-3 flex-1 w-full text-center sm:text-left">
-                    <p className="text-xs text-gray-500">
-                      Upload a JPEG or PNG profile picture. Max size: 5MB.
-                    </p>
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={handlePhotoUpload}
+                      onChange={handleCustomTemplateUpload}
                       className="hidden"
-                      id="photo-upload-input"
+                      id="custom-template-upload-input"
                     />
                     <label
-                      htmlFor="photo-upload-input"
-                      className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer shadow-md shadow-indigo-100 hover:shadow-indigo-200"
+                      htmlFor="custom-template-upload-input"
+                      className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer shadow-md"
                     >
-                      Choose Photo
+                      Choose Background Image
                     </label>
 
-                    {/* Scale and crop sliders */}
-                    {photoUrl && (
-                      <div className="space-y-2 pt-2 text-left">
-                        <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600">
-                          <span>Scale Photo:</span>
-                          <span>{Math.round(photoScale * 100)}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0.5"
-                          max="2"
-                          step="0.05"
-                          value={photoScale}
-                          onChange={(e) => setPhotoScale(parseFloat(e.target.value))}
-                          className="w-full accent-indigo-600 h-1.5 rounded-full"
-                        />
-
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <div>
-                            <span className="text-[10px] text-gray-500 block">Move Horizontal:</span>
-                            <input
-                              type="range"
-                              min="-50"
-                              max="50"
-                              value={photoX}
-                              onChange={(e) => setPhotoX(parseInt(e.target.value))}
-                              className="w-full accent-indigo-600 h-1 rounded-full"
-                            />
-                          </div>
-                          <div>
-                            <span className="text-[10px] text-gray-500 block">Move Vertical:</span>
-                            <input
-                              type="range"
-                              min="-50"
-                              max="50"
-                              value={photoY}
-                              onChange={(e) => setPhotoY(parseInt(e.target.value))}
-                              className="w-full accent-indigo-600 h-1 rounded-full"
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                    <div className="space-y-2 pt-2 text-left">
+                      <label className="block text-[11px] font-semibold text-gray-600">Overlay Layout Style:</label>
+                      <select
+                        value={formData.customTemplateLayout || 'center'}
+                        onChange={(e) => handleInputChange('customTemplateLayout', e.target.value)}
+                        className="w-full bg-white border border-gray-200 px-3 py-1.5 rounded-lg text-xs"
+                      >
+                        <option value="center">Center Clean (Classic overlay)</option>
+                        <option value="two-column">Left details + Right photo</option>
+                        <option value="text-only">Full text (No photo)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Custom Field: Photo Layout Toggle & Upload in Step 1 */}
+            {currentStep === 0 && (
+              <div className="sm:col-span-2 border-t border-gray-100 pt-6 mt-2 space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <ImageIcon className="h-4 w-4 text-indigo-600" />
+                    Profile Photo Layout
+                  </h3>
+                  
+                  {/* Toggle */}
+                  <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 p-1.5 rounded-xl self-start">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHasPhoto(true);
+                        handleInputChange('hasPhoto', 'true');
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                        hasPhoto
+                          ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                          : 'text-gray-500 hover:text-indigo-600'
+                      }`}
+                    >
+                      With Photo
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHasPhoto(false);
+                        handleInputChange('hasPhoto', 'false');
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                        !hasPhoto
+                          ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                          : 'text-gray-500 hover:text-indigo-600'
+                      }`}
+                    >
+                      No Photo
+                    </button>
+                  </div>
+                </div>
+
+                {hasPhoto && (
+                  <div className="flex flex-col sm:flex-row items-center gap-6 bg-slate-50/50 border border-slate-100 p-6 rounded-2xl animate-fadeIn">
+                    {/* Photo Preview with position adjust */}
+                    <div className="h-28 w-28 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden relative flex items-center justify-center shrink-0 shadow-inner">
+                      {photoUrl ? (
+                        <div className="relative w-full h-full">
+                          <img
+                            src={photoUrl}
+                            alt="Uploaded Profile"
+                            className="object-cover transition-transform"
+                            style={{
+                              transform: `scale(${photoScale}) translate(${photoX}px, ${photoY}px)`,
+                              width: '100%',
+                              height: '100%',
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setPhotoUrl('')}
+                            className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 shadow-md cursor-pointer"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <ImageIcon className="h-8 w-8 text-gray-300" />
+                      )}
+                    </div>
+
+                    <div className="space-y-3 flex-1 w-full text-center sm:text-left">
+                      <p className="text-xs text-gray-500">
+                        Upload a JPEG or PNG profile picture. Max size: 5MB.
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                        id="photo-upload-input"
+                      />
+                      <label
+                        htmlFor="photo-upload-input"
+                        className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl cursor-pointer shadow-md shadow-indigo-100 hover:shadow-indigo-200"
+                      >
+                        Choose Photo
+                      </label>
+
+                      {/* Scale and crop sliders */}
+                      {photoUrl && (
+                        <div className="space-y-2 pt-2 text-left">
+                          <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600">
+                            <span>Scale Photo:</span>
+                            <span>{Math.round(photoScale * 100)}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.5"
+                            max="2"
+                            step="0.05"
+                            value={photoScale}
+                            onChange={(e) => setPhotoScale(parseFloat(e.target.value))}
+                            className="w-full accent-indigo-600 h-1.5 rounded-full"
+                          />
+
+                          <div className="grid grid-cols-2 gap-2 pt-1">
+                            <div>
+                              <span className="text-[10px] text-gray-500 block">Move Horizontal:</span>
+                              <input
+                                type="range"
+                                min="-50"
+                                max="50"
+                                value={photoX}
+                                onChange={(e) => setPhotoX(parseInt(e.target.value))}
+                                className="w-full accent-indigo-600 h-1 rounded-full"
+                              />
+                            </div>
+                            <div>
+                              <span className="text-[10px] text-gray-500 block">Move Vertical:</span>
+                              <input
+                                type="range"
+                                min="-50"
+                                max="50"
+                                value={photoY}
+                                onChange={(e) => setPhotoY(parseInt(e.target.value))}
+                                className="w-full accent-indigo-600 h-1 rounded-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

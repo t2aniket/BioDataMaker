@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { draftToken, selectedLanguage, selectedTemplateId, formData, photoUrl } = body;
+    const { draftToken, selectedLanguage, selectedTemplateId, labelMode, formData, photoUrl, customTemplateUrl } = body;
 
     if (!selectedLanguage || !selectedTemplateId) {
       return NextResponse.json({ error: 'Language and Template ID are required' }, { status: 400 });
@@ -53,17 +53,21 @@ export async function POST(request: Request) {
         where: { draftToken },
         update: {
           selectedLanguage,
-          selectedTemplateId,
+          selectedTemplateSlug: selectedTemplateId,
+          labelMode: labelMode || 'both',
           formData: formData || {},
           photoUrl: photoUrl || null,
+          customTemplateUrl: customTemplateUrl || null,
           expiresAt,
         },
         create: {
           draftToken,
           selectedLanguage,
-          selectedTemplateId,
+          selectedTemplateSlug: selectedTemplateId,
+          labelMode: labelMode || 'both',
           formData: formData || {},
           photoUrl: photoUrl || null,
+          customTemplateUrl: customTemplateUrl || null,
           expiresAt,
         },
       });
@@ -74,9 +78,11 @@ export async function POST(request: Request) {
         data: {
           draftToken: newToken,
           selectedLanguage,
-          selectedTemplateId,
+          selectedTemplateSlug: selectedTemplateId,
+          labelMode: labelMode || 'both',
           formData: formData || {},
           photoUrl: photoUrl || null,
+          customTemplateUrl: customTemplateUrl || null,
           expiresAt,
         },
       });

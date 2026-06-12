@@ -17,11 +17,97 @@ interface Template {
   previewImage: string;
   styleConfig: any;
   supportedExports: string[];
+  languageCode?: string;
 }
 
 interface TemplatesListProps {
   initialTemplates: Template[];
   langCode: LanguageCode;
+}
+
+function TemplateCardPreview({ styleConfig, category, name, languageCode }: { styleConfig: any; category: string; name: string; languageCode: string }) {
+  let bgClass = "bg-slate-50";
+  let borderClass = "border-gray-200";
+  let primaryColor = styleConfig.primaryColor || "#4f46e5";
+
+  if (styleConfig.theme === 'gold') {
+    bgClass = "bg-amber-50/20";
+    borderClass = "border-amber-400";
+  } else if (styleConfig.theme === 'cream') {
+    bgClass = "bg-amber-50/5";
+    borderClass = "border-amber-200";
+  } else if (styleConfig.theme === 'pastel-blue') {
+    bgClass = "bg-blue-50/30";
+    borderClass = "border-blue-200";
+  } else if (styleConfig.theme === 'pastel-green') {
+    bgClass = "bg-teal-50/30";
+    borderClass = "border-teal-200";
+  } else if (styleConfig.theme === 'floral') {
+    bgClass = "bg-pink-50/20";
+    borderClass = "border-pink-300";
+  } else if (styleConfig.theme === 'royal' || styleConfig.theme === 'maroon-gold') {
+    bgClass = "bg-red-50/10";
+    borderClass = "border-amber-500";
+  } else if (styleConfig.theme === 'saffron') {
+    bgClass = "bg-orange-50/20";
+    borderClass = "border-orange-500";
+  } else if (styleConfig.theme === 'patola' || styleConfig.theme === 'red') {
+    bgClass = "bg-rose-50/20";
+    borderClass = "border-red-500";
+  } else if (styleConfig.theme === 'alpana' || styleConfig.theme === 'white-red') {
+    bgClass = "bg-red-50/5";
+    borderClass = "border-red-600";
+  } else if (styleConfig.theme === 'kolam' || styleConfig.theme === 'yellow') {
+    bgClass = "bg-amber-50/30";
+    borderClass = "border-yellow-500";
+  } else if (styleConfig.theme === 'phulkari' || styleConfig.theme === 'multicolor') {
+    bgClass = "bg-emerald-50/10";
+    borderClass = "border-green-500";
+  } else if (styleConfig.theme === 'mughal' || styleConfig.theme === 'green-gold') {
+    bgClass = "bg-emerald-50/20";
+    borderClass = "border-emerald-600";
+  } else if (styleConfig.theme === 'luxury-red') {
+    bgClass = "bg-rose-50/10";
+    borderClass = "border-rose-700";
+  }
+
+  const isRTL = languageCode === 'ur';
+
+  return (
+    <div className={`absolute inset-0 p-4 flex flex-col justify-between ${bgClass} border-8 ${borderClass} transition-all duration-300`} style={{ direction: isRTL ? 'rtl' : 'ltr' }}>
+      <div className="w-full h-8 border-b border-gray-100 flex justify-between items-center px-1">
+        <span className="text-[9px] font-bold" style={{ color: primaryColor }}>
+          {isRTL ? 'سوانح حیات' : 'BIODATA'}
+        </span>
+        {styleConfig.motif !== 'none' && (
+          <span className="text-xs">
+            {styleConfig.motif === 'ganpati' ? '🕉️' : styleConfig.motif === 'crescent' ? '🌙' : '🌸'}
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-1.5 py-4 flex-1 flex flex-col justify-center">
+        <div className="space-y-1">
+          <div className="h-1.5 w-1/3 rounded-full" style={{ backgroundColor: primaryColor }} />
+          <div className="h-1 w-2/3 bg-slate-200 rounded-full" />
+        </div>
+        <div className="space-y-1">
+          <div className="h-1.5 w-1/4 rounded-full" style={{ backgroundColor: primaryColor }} />
+          <div className="h-1 w-3/4 bg-slate-200 rounded-full" />
+        </div>
+        <div className="space-y-1">
+          <div className="h-1.5 w-1/3 rounded-full" style={{ backgroundColor: primaryColor }} />
+          <div className="h-1 w-1/2 bg-slate-200 rounded-full" />
+        </div>
+      </div>
+
+      <div className="h-4 w-full border-t border-gray-100 flex justify-center items-center">
+        <span className="text-[8px] text-gray-400 font-semibold tracking-widest uppercase truncate max-w-full">
+          {name}
+        </span>
+      </div>
+    </div>
+  );
 }
 
 export default function TemplatesList({ initialTemplates, langCode }: TemplatesListProps) {
@@ -57,18 +143,18 @@ export default function TemplatesList({ initialTemplates, langCode }: TemplatesL
   });
 
   const handleSelectTemplate = (template: Template) => {
-    // Save draft state
+    // Save draft state using template.slug
     const existingDraft = loadDraftLocal() || {
       language: selectedLang,
-      templateId: template.id,
+      templateId: template.slug,
       formData: {},
     };
     existingDraft.language = selectedLang;
-    existingDraft.templateId = template.id;
+    existingDraft.templateId = template.slug;
     saveDraftLocal(existingDraft);
 
-    // Go to details page
-    router.push(`/templates/${template.id}?lang=${selectedLang}`);
+    // Go to details page using slug
+    router.push(`/templates/${template.slug}?lang=${selectedLang}`);
   };
 
   const categories = ['All', 'Free', 'Premium', 'Regional', 'Royal', 'No-photo'];
@@ -177,56 +263,22 @@ export default function TemplatesList({ initialTemplates, langCode }: TemplatesL
               const priceText = template.isFree ? 'Free' : `₹${template.priceInPaise / 100}`;
               return (
                 <div
-                  key={template.id}
+                  key={template.slug}
                   onClick={() => handleSelectTemplate(template)}
                   className="group bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:scale-103 transition-all duration-300 flex flex-col justify-between cursor-pointer"
                 >
                   {/* Template Card Visual */}
                   <div className="relative aspect-[3/4] bg-linear-to-b from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden border-b border-gray-50">
-                    {/* Simulated Template Preview */}
-                    <div className="absolute inset-0 p-4 flex flex-col justify-between">
-                      {/* Motif Header simulation */}
-                      <div className="w-full h-8 border-b border-gray-200/50 flex justify-between items-center px-2">
-                        <div className="h-2 w-12 bg-gray-300 rounded-full" />
-                        <div className="h-3.5 w-3.5 rounded-full border border-gray-300" />
-                        <div className="h-2 w-12 bg-gray-300 rounded-full" />
-                      </div>
-
-                      {/* simulated details */}
-                      <div className="space-y-2 py-4">
-                        <div className="h-3 w-3/4 bg-gray-300 rounded-md" />
-                        <div className="h-2 w-1/2 bg-gray-200 rounded-md" />
-                        <div className="h-2 w-2/3 bg-gray-200 rounded-md" />
-                        <div className="h-2.5 w-1/2 bg-gray-300 rounded-md mt-4" />
-                        <div className="h-2 w-3/4 bg-gray-200 rounded-md" />
-                      </div>
-
-                      {/* Motif Footer simulation */}
-                      <div className="h-4 w-full border-t border-gray-200/50 flex justify-center items-center">
-                        <div className="h-1.5 w-20 bg-gray-300 rounded-full" />
-                      </div>
-                    </div>
-
-                    {/* Gradient Overlay based on categories */}
-                    {template.styleConfig.theme === 'gold' && (
-                      <div className="absolute inset-0 border-8 border-amber-400 bg-amber-50/10 opacity-70 group-hover:scale-105 transition-transform" />
-                    )}
-                    {template.styleConfig.theme === 'floral' && (
-                      <div className="absolute inset-0 border-8 border-pink-200 bg-pink-50/10 opacity-70 group-hover:scale-105 transition-transform" />
-                    )}
-                    {template.styleConfig.theme === 'orange' && (
-                      <div className="absolute inset-0 border-8 border-orange-400 bg-orange-50/10 opacity-70 group-hover:scale-105 transition-transform" />
-                    )}
-                    {template.styleConfig.theme === 'red' && (
-                      <div className="absolute inset-0 border-8 border-red-500 bg-red-50/10 opacity-70 group-hover:scale-105 transition-transform" />
-                    )}
-                    {template.styleConfig.theme === 'green-gold' && (
-                      <div className="absolute inset-0 border-8 border-emerald-600 bg-emerald-50/10 opacity-70 group-hover:scale-105 transition-transform" />
-                    )}
+                    <TemplateCardPreview
+                      styleConfig={template.styleConfig}
+                      category={template.category}
+                      name={template.name}
+                      languageCode={template.languageCode || selectedLang}
+                    />
 
                     {/* Badge */}
                     <span
-                      className={`absolute top-4 left-4 inline-flex items-center rounded-full px-3 py-1 text-xs font-bold shadow-xs ${
+                      className={`absolute top-4 left-4 inline-flex items-center rounded-full px-3 py-1 text-xs font-bold shadow-xs z-20 ${
                         template.isFree
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-indigo-100 text-indigo-800'
@@ -236,7 +288,7 @@ export default function TemplatesList({ initialTemplates, langCode }: TemplatesL
                     </span>
 
                     {/* Category Label */}
-                    <span className="absolute bottom-4 right-4 text-gray-400 text-2xs uppercase tracking-wider bg-white/95 px-2 py-0.5 rounded-md border border-gray-100 font-bold">
+                    <span className="absolute bottom-4 right-4 text-gray-400 text-2xs uppercase tracking-wider bg-white/95 px-2 py-0.5 rounded-md border border-gray-100 font-bold z-20">
                       {template.category}
                     </span>
                   </div>

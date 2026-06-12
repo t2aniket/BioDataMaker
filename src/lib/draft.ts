@@ -6,8 +6,10 @@ const TOKEN_KEY = 'free_biodata_maker_token';
 export interface DraftState {
   language: string;
   templateId: string;
+  labelMode?: string;
   formData: Record<string, any>;
   photoUrl?: string;
+  customTemplateUrl?: string;
   symbol?: string;
 }
 
@@ -59,8 +61,10 @@ export async function syncDraftToServer(state: DraftState): Promise<string> {
       draftToken: token || undefined,
       selectedLanguage: state.language,
       selectedTemplateId: state.templateId,
+      labelMode: state.labelMode || 'both',
       formData: state.formData,
       photoUrl: state.photoUrl,
+      customTemplateUrl: state.customTemplateUrl,
     }),
   });
 
@@ -84,8 +88,10 @@ export async function fetchDraftFromServer(token: string): Promise<DraftState> {
   const data = await res.json();
   return {
     language: data.selectedLanguage,
-    templateId: data.selectedTemplateId,
+    templateId: data.selectedTemplateSlug, // Map from selectedTemplateSlug
+    labelMode: data.labelMode,
     formData: data.formData,
     photoUrl: data.photoUrl || undefined,
+    customTemplateUrl: data.customTemplateUrl || undefined,
   };
 }

@@ -10,12 +10,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
-    // 1. Log the download in Database
     await prisma.download.create({
       data: {
         orderId: orderId || null,
         draftToken,
-        templateId,
+        templateSlug: templateId,
         exportType,
         downloadCount: 1,
       },

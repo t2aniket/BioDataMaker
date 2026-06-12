@@ -11,9 +11,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Template ID and Draft Token are required' }, { status: 400 });
     }
 
+    if (!customerEmail || !customerPhone) {
+      return NextResponse.json({ error: 'Email and Phone are required' }, { status: 400 });
+    }
+
+    if (!customerEmail.includes('@') || !customerEmail.includes('.')) {
+      return NextResponse.json({ error: 'Please enter a valid email address' }, { status: 400 });
+    }
+
+    const cleanPhone = customerPhone.replace(/\D/g, '');
+    if (cleanPhone.length < 10 || cleanPhone.length > 12) {
+      return NextResponse.json({ error: 'Please enter a valid Indian mobile number' }, { status: 400 });
+    }
+
     // 1. Fetch template from database to get the correct price
-    const template = await prisma.template.findUnique({
-      where: { id: templateId },
+    const template = await prisma.template.findFirst({
+      where: {
+        OR: [
+          { slug: templateId },
+          { id: templateId }
+        ]
+      },
     });
 
     if (!template) {
@@ -39,7 +57,7 @@ export async function POST(request: Request) {
       data: {
         orderNumber,
         draftToken,
-        templateId,
+        templateSlug: template.slug,
         amountInPaise: template.priceInPaise,
         currency: 'INR',
         status: 'CREATED',

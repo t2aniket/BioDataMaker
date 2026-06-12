@@ -26,7 +26,7 @@ export async function GET() {
 
     // 4. Popular templates
     const popularTemplatesRaw = await prisma.order.groupBy({
-      by: ['templateId'],
+      by: ['templateSlug'],
       where: { status: 'PAID' },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
@@ -37,10 +37,10 @@ export async function GET() {
     const popularTemplates = await Promise.all(
       popularTemplatesRaw.map(async (item: any) => {
         const template = await prisma.template.findUnique({
-          where: { id: item.templateId },
+          where: { slug: item.templateSlug },
         });
         return {
-          id: item.templateId,
+          id: item.templateSlug,
           name: template?.name || 'Unknown',
           slug: template?.slug || '',
           count: item._count.id,

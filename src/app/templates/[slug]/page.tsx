@@ -5,18 +5,18 @@ import TemplateDetailClient from './TemplateDetailClient';
 import { getLanguageConfig, LanguageCode } from '@/i18n/config';
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function TemplateDetailPage({ params, searchParams }: PageProps) {
-  const { id } = await params;
+  const { slug } = await params;
   const resolvedSearchParams = await searchParams;
   const lang = (resolvedSearchParams.lang as LanguageCode) || 'en';
 
   // Fetch template details
   const template = await prisma.template.findUnique({
-    where: { id },
+    where: { slug },
   });
 
   if (!template || !template.isActive) {
@@ -26,7 +26,7 @@ export default async function TemplateDetailPage({ params, searchParams }: PageP
   // Serialize the template JSON fields
   const serializedTemplate = {
     ...template,
-    languageSupport: Array.isArray(template.languageSupport) ? template.languageSupport : JSON.parse(template.languageSupport as string),
+    languageSupport: template.languageCode === 'all' ? ['en', 'hi', 'mr', 'gu', 'ta', 'te', 'kn', 'bn', 'pa', 'ur'] : [template.languageCode],
     styleConfig: typeof template.styleConfig === 'string' ? JSON.parse(template.styleConfig) : template.styleConfig,
     supportedExports: Array.isArray(template.supportedExports) ? template.supportedExports : JSON.parse(template.supportedExports as string),
   };

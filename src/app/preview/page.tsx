@@ -33,6 +33,7 @@ export default function PreviewPage() {
 
   // Customer Contact for checkout
   const [customerEmail, setCustomerEmail] = useState<string>('');
+  const [confirmEmail, setConfirmEmail] = useState<string>('');
   const [customerPhone, setCustomerPhone] = useState<string>('');
 
   // Loaded successfully
@@ -143,6 +144,25 @@ export default function PreviewPage() {
 
     setIsProcessingPayment(true);
 
+    // Validate inputs
+    if (!customerEmail.trim() || !confirmEmail.trim() || !customerPhone.trim()) {
+      alert('Please fill out all contact details.');
+      setIsProcessingPayment(false);
+      return;
+    }
+    if (customerEmail.toLowerCase().trim() !== confirmEmail.toLowerCase().trim()) {
+      alert('Email and Confirm Email do not match.');
+      setIsProcessingPayment(false);
+      return;
+    }
+    const phoneRegex = /^[6-9]\d{9}$/;
+    const cleanPhone = customerPhone.replace(/\s/g, '').trim();
+    if (!phoneRegex.test(cleanPhone)) {
+      alert('Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).');
+      setIsProcessingPayment(false);
+      return;
+    }
+
     try {
       // 1. Load Razorpay script
       const scriptLoaded = await loadRazorpayScript();
@@ -165,7 +185,7 @@ export default function PreviewPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          templateId: template.id,
+          templateId: template.slug, // Pass slug instead of id
           draftToken: token,
           customerEmail,
           customerPhone,
@@ -354,16 +374,62 @@ export default function PreviewPage() {
         {/* Center: Live Template Visual rendering */}
         <div className="lg:col-span-5 flex justify-center items-start overflow-x-auto p-4 bg-slate-800 rounded-3xl shadow-inner max-h-[850px] overflow-y-auto">
           {/* We scale the A4 frame down for visual presentation on page */}
-          <div className="origin-top scale-75 sm:scale-90 md:scale-95 lg:scale-75 xl:scale-85 shadow-2xl">
-            <BiodataTemplate
-              formData={draftState.formData || {}}
-              templateStyle={template.styleConfig || {}}
-              langCode={draftState.language}
-              dict={dict}
-              photoUrl={draftState.photoUrl}
-              watermark={!isFree} // Watermark for previewing paid template
-            />
-          </div>
+          {isFree ? (
+            <div className="origin-top scale-75 sm:scale-90 md:scale-95 lg:scale-75 xl:scale-85 shadow-2xl">
+              <BiodataTemplate
+                formData={draftState.formData || {}}
+                templateStyle={template.styleConfig || {}}
+                langCode={draftState.language}
+                dict={dict}
+                photoUrl={draftState.photoUrl}
+                customTemplateUrl={draftState.customTemplateUrl}
+                watermark={false}
+                labelMode={draftState.labelMode || 'both'}
+              />
+            </div>
+          ) : (
+            /* Paid preview container */
+            <div 
+              className="relative shadow-2xl rounded-2xl overflow-hidden select-none border border-slate-700 bg-white"
+              style={{ width: '320px', height: '450px' }}
+              onContextMenu={(e) => e.preventDefault()}
+            >
+              {/* Blur and noise filter over content */}
+              <div className="absolute inset-0 z-30 pointer-events-none bg-slate-900/10 backdrop-blur-[3px] select-none" />
+              
+              {/* Repeated Watermark Overlays */}
+              <div className="absolute inset-0 z-40 pointer-events-none select-none flex flex-col justify-between p-4 rotate-[-15deg] scale-105 opacity-85">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="flex justify-around text-[10px] font-black text-red-600/60 uppercase tracking-widest whitespace-nowrap">
+                    <span>★ PREVIEW ★</span>
+                    <span>Free Biodata Maker</span>
+                    <span>Unlock to Download</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Scaled-down rendering of the template inside */}
+              <div 
+                className="absolute origin-top-left pointer-events-none select-none filter blur-[1.5px]"
+                style={{ 
+                  transform: 'scale(0.40)', 
+                  width: '794px', 
+                  height: '1123px',
+                }}
+              >
+                <BiodataTemplate
+                  formData={draftState.formData || {}}
+                  templateStyle={template.styleConfig || {}}
+                  langCode={draftState.language}
+                  dict={dict}
+                  photoUrl={draftState.photoUrl}
+                  customTemplateUrl={draftState.customTemplateUrl}
+                  watermark={true}
+                  labelMode={draftState.labelMode || 'both'}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right: Checkout drawer / download locks */}
@@ -394,35 +460,53 @@ export default function PreviewPage() {
             {!isFree && (
               <div className="space-y-4 pt-2">
                 <div className="space-y-1.5">
-                  <label htmlFor="customer-email" className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Email Address (Optional)
+                  <label htmlFor="customer-email" className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Email Address <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
                     id="customer-email"
+                    required
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-100"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-100 text-gray-900"
                   />
-                  <p className="text-[10px] text-gray-400">
-                    Used to send you the direct download link.
-                  </p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="customer-phone" className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Mobile Number (Optional)
+                  <label htmlFor="confirm-email" className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Confirm Email Address <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    id="confirm-email"
+                    required
+                    value={confirmEmail}
+                    onChange={(e) => setConfirmEmail(e.target.value)}
+                    placeholder="Confirm your email"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-100 text-gray-900"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="customer-phone" className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    Mobile Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
                     id="customer-phone"
+                    required
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     placeholder="9876543210"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-100"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-100 text-gray-900"
                   />
                 </div>
+
+                <p className="text-xs text-amber-600 bg-amber-50 border border-amber-100 p-3 rounded-xl leading-normal font-medium">
+                  “We use this only to help you re-download from this website. We do not send marketing emails.”
+                </p>
               </div>
             )}
 

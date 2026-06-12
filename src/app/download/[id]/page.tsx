@@ -30,7 +30,7 @@ export default async function DownloadPage({ params }: PageProps) {
       }
 
       const template = await prisma.template.findUnique({
-        where: { id: draft.selectedTemplateId },
+        where: { slug: draft.selectedTemplateSlug },
       });
 
       if (!template || !template.isFree) {
@@ -64,7 +64,7 @@ export default async function DownloadPage({ params }: PageProps) {
       }
 
       draftToken = order.draftToken;
-      templateId = order.templateId;
+      templateId = order.templateSlug;
       orderId = order.id;
       orderNumber = order.orderNumber;
       isPaid = true;
@@ -76,7 +76,7 @@ export default async function DownloadPage({ params }: PageProps) {
     });
 
     const template = await prisma.template.findUnique({
-      where: { id: templateId },
+      where: { slug: templateId },
     });
 
     if (!draft || !template) {
@@ -85,7 +85,7 @@ export default async function DownloadPage({ params }: PageProps) {
 
     const serializedTemplate = {
       ...template,
-      languageSupport: Array.isArray(template.languageSupport) ? template.languageSupport : JSON.parse(template.languageSupport as string),
+      languageSupport: template.languageCode === 'all' ? ['en', 'hi', 'mr', 'gu', 'ta', 'te', 'kn', 'bn', 'pa', 'ur'] : [template.languageCode],
       styleConfig: typeof template.styleConfig === 'string' ? JSON.parse(template.styleConfig) : template.styleConfig,
       supportedExports: Array.isArray(template.supportedExports) ? template.supportedExports : JSON.parse(template.supportedExports as string),
     };
@@ -96,8 +96,10 @@ export default async function DownloadPage({ params }: PageProps) {
           draftToken={draftToken}
           formData={draft.formData as Record<string, any>}
           photoUrl={draft.photoUrl || undefined}
+          customTemplateUrl={draft.customTemplateUrl || undefined}
           template={serializedTemplate}
           langCode={draft.selectedLanguage as LanguageCode}
+          labelMode={draft.labelMode}
           orderId={orderId}
           orderNumber={orderNumber}
           isPaid={isPaid}

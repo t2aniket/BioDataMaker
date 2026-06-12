@@ -3,13 +3,13 @@ import prisma from '@/lib/prisma';
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { id } = await params;
+  const { slug } = await params;
 
   try {
     const template = await prisma.template.findUnique({
-      where: { id },
+      where: { slug },
     });
 
     if (!template || !template.isActive) {
@@ -18,7 +18,7 @@ export async function GET(
 
     const serialized = {
       ...template,
-      languageSupport: Array.isArray(template.languageSupport) ? template.languageSupport : JSON.parse(template.languageSupport as string),
+      languageSupport: template.languageCode === 'all' ? ['en', 'hi', 'mr', 'gu', 'ta', 'te', 'kn', 'bn', 'pa', 'ur'] : [template.languageCode],
       styleConfig: typeof template.styleConfig === 'string' ? JSON.parse(template.styleConfig) : template.styleConfig,
       supportedExports: Array.isArray(template.supportedExports) ? template.supportedExports : JSON.parse(template.supportedExports as string),
     };

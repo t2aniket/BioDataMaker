@@ -9,20 +9,20 @@ export default function HomePage() {
   const router = useRouter();
 
   const trustCards = [
-    { title: 'No Signup Required', desc: 'No email or login needed. Start immediately.', icon: ShieldCheck },
-    { title: 'Simple Template Free', desc: 'Simple templates are genuinely free forever.', icon: CheckCircle },
-    { title: 'Premium from ₹10', desc: 'Upgrade for professional designs starting at just ₹10.', icon: Award },
-    { title: 'PDF, Image & Word', desc: 'Export as print-ready PDF, PNG, and editable Word DOCX.', icon: Printer },
-    { title: '10 Indian Languages', desc: 'Create biodata in Hindi, Marathi, Tamil, Urdu, and more.', icon: Globe },
-    { title: 'Mobile Friendly', desc: 'Fill the form and adjust crop photo directly from your mobile.', icon: Smartphone },
+    { title: 'No Login Required', desc: 'No email or account creation needed. Start immediately.', icon: ShieldCheck },
+    { title: 'Simple Templates Free', desc: 'Simple templates are genuinely free with branding.', icon: CheckCircle },
+    { title: 'Premium after Preview', desc: 'Upgrade to premium templates only if you like the design preview.', icon: Award },
+    { title: 'PDF & Image Downloads', desc: 'Download as high-quality print-ready PDF or shareable PNG.', icon: Printer },
+    { title: '10 Indian Languages', desc: 'Create biodata in Hindi, Marathi, Tamil, Telugu, Urdu, and more.', icon: Globe },
+    { title: 'Private & Secure', desc: 'Your personal data is encrypted and automatically deleted after 48 hours.', icon: ShieldCheck },
   ];
 
   const steps = [
     { step: '1', title: 'Select Language', desc: 'Choose from English or 9 Indian regional languages.' },
-    { step: '2', title: 'Choose Template', desc: 'Pick from 20+ free simple or premium regional layouts.' },
+    { step: '2', title: 'Choose Template', desc: 'Pick from 120+ free simple or premium regional layouts.' },
     { step: '3', title: 'Fill Details', desc: 'Enter bio, education, family details, and crop a photo.' },
     { step: '4', title: 'Live Preview', desc: 'See a live, formatted A4 preview of your document.' },
-    { step: '5', title: 'Download or Upgrade', desc: 'Download free PDF or unlock editable DOCX for premium.' },
+    { step: '5', title: 'Download or Upgrade', desc: 'Download free watermarked PDF/Image or unlock premium designs.' },
   ];
 
   return (
@@ -68,7 +68,7 @@ export default function HomePage() {
             <span className="bg-linear-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">For Marriage</span>
           </h1>
           <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            Create your marriage biodata in your own language. Simple templates are free forever. Premium templates start from just ₹10.
+            Create your marriage biodata in your own language. Simple templates are free. Premium designs are available after preview.
           </p>
         </div>
 
@@ -91,7 +91,7 @@ export default function HomePage() {
 
         {/* Pricing tag note */}
         <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">
-          “Simple biodata templates are free forever. Premium templates start from just ₹10.”
+          “Simple templates are free. Premium designs unlock after preview.”
         </p>
       </section>
 
@@ -128,9 +128,9 @@ export default function HomePage() {
       {/* Comparison Section */}
       <section className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <div className="text-center space-y-2">
-          <h2 className="text-3xl font-extrabold text-gray-950">Why Pay More?</h2>
+          <h2 className="text-3xl font-extrabold text-gray-950">Free vs Premium Features</h2>
           <p className="text-gray-500 text-sm">
-            “Why pay ₹40–₹80? Start free, upgrade from ₹10.”
+            Choose a simple layout for free, or unlock premium designs only after checking your live preview.
           </p>
         </div>
 
@@ -139,30 +139,30 @@ export default function HomePage() {
             <thead className="bg-slate-50 text-gray-700 uppercase font-bold text-xs border-b border-gray-100">
               <tr>
                 <th className="px-6 py-4">Features</th>
-                <th className="px-6 py-4 text-indigo-600">Free Biodata Maker</th>
-                <th className="px-6 py-4 text-gray-400">Other Competitors</th>
+                <th className="px-6 py-4 text-emerald-600">Free Templates</th>
+                <th className="px-6 py-4 text-indigo-600">Premium Templates</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-gray-600">
               <tr>
-                <td className="px-6 py-4 font-semibold text-gray-950">Simple Designs</td>
-                <td className="px-6 py-4 text-emerald-600 font-bold flex items-center gap-1.5"><Check className="h-4.5 w-4.5" /> Free Forever</td>
-                <td className="px-6 py-4">₹40 to ₹80</td>
+                <td className="px-6 py-4 font-semibold text-gray-950">Cultural Design Themes</td>
+                <td className="px-6 py-4">Simple Layouts</td>
+                <td className="px-6 py-4 font-bold text-indigo-600 flex items-center gap-1.5"><Check className="h-4.5 w-4.5" /> 120+ Regional Styles</td>
               </tr>
               <tr>
-                <td className="px-6 py-4 font-semibold text-gray-950">Premium Designs</td>
-                <td className="px-6 py-4 text-indigo-600 font-bold">Starts at ₹10</td>
-                <td className="px-6 py-4">₹100 to ₹250</td>
+                <td className="px-6 py-4 font-semibold text-gray-950">Watermark Status</td>
+                <td className="px-6 py-4 text-amber-600 font-semibold">Includes Branding Watermark</td>
+                <td className="px-6 py-4 text-emerald-600 font-bold flex items-center gap-1.5"><Check className="h-4.5 w-4.5" /> Fully Watermark Free</td>
               </tr>
               <tr>
                 <td className="px-6 py-4 font-semibold text-gray-950">Editable Word DOCX</td>
-                <td className="px-6 py-4 text-emerald-600 font-bold flex items-center gap-1.5"><Check className="h-4.5 w-4.5" /> Yes (Included)</td>
-                <td className="px-6 py-4 flex items-center gap-1.5 text-rose-600"><X className="h-4.5 w-4.5" /> No Word file</td>
+                <td className="px-6 py-4 text-rose-600 flex items-center gap-1.5"><X className="h-4.5 w-4.5" /> Locked</td>
+                <td className="px-6 py-4 text-emerald-600 font-bold flex items-center gap-1.5"><Check className="h-4.5 w-4.5" /> Yes (Included in Premium)</td>
               </tr>
               <tr>
-                <td className="px-6 py-4 font-semibold text-gray-950">Watermark Free</td>
-                <td className="px-6 py-4 text-emerald-600 font-bold flex items-center gap-1.5"><Check className="h-4.5 w-4.5" /> Yes (For Paid & Basic Free)</td>
-                <td className="px-6 py-4">Paid Only</td>
+                <td className="px-6 py-4 font-semibold text-gray-950">PDF & Image Downloads</td>
+                <td className="px-6 py-4 text-emerald-600 font-bold flex items-center gap-1.5"><Check className="h-4.5 w-4.5" /> Yes (Watermarked)</td>
+                <td className="px-6 py-4 text-emerald-600 font-bold flex items-center gap-1.5"><Check className="h-4.5 w-4.5" /> Yes (Clean High-Res)</td>
               </tr>
             </tbody>
           </table>

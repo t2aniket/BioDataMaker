@@ -7,7 +7,11 @@ export async function GET(request: Request) {
 
   try {
     const dict = await getTranslations(lang);
-    return NextResponse.json(dict);
+    const enDict = await getTranslations('en');
+    return NextResponse.json({
+      ...dict,
+      _en: enDict,
+    });
   } catch (error: any) {
     console.error('Error loading translations:', error);
     return NextResponse.json({ error: 'Failed to load translations' }, { status: 500 });

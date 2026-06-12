@@ -23,8 +23,10 @@ interface DownloadClientProps {
   draftToken: string;
   formData: Record<string, any>;
   photoUrl?: string;
+  customTemplateUrl?: string;
   template: Template;
   langCode: LanguageCode;
+  labelMode?: string;
   orderId: string | null;
   orderNumber: string | null;
   isPaid: boolean;
@@ -34,8 +36,10 @@ export default function DownloadClient({
   draftToken,
   formData,
   photoUrl,
+  customTemplateUrl,
   template,
   langCode,
+  labelMode = 'both',
   orderId,
   orderNumber,
   isPaid,
@@ -69,7 +73,7 @@ export default function DownloadClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           draftToken,
-          templateId: template.id,
+          templateId: template.slug,
           orderId,
           exportType,
         }),
@@ -228,23 +232,25 @@ export default function DownloadClient({
                 )}
               </button>
 
-              <button
-                onClick={handleDownloadDOCX}
-                disabled={isWordGenerating}
-                className="w-full border-2 border-indigo-600 hover:bg-indigo-50 text-indigo-700 font-bold py-4 px-6 rounded-xl hover:scale-101 active:scale-99 transition-all duration-300 text-center flex items-center justify-center gap-3 cursor-pointer text-sm disabled:opacity-50"
-              >
-                {isWordGenerating ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    Generating Document...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-5 w-5" />
-                    Download Word (Editable DOCX)
-                  </>
-                )}
-              </button>
+              {isPaid && (template.supportedExports.includes('DOCX') || template.supportedExports.includes('docx')) && (
+                <button
+                  onClick={handleDownloadDOCX}
+                  disabled={isWordGenerating}
+                  className="w-full border-2 border-indigo-600 hover:bg-indigo-50 text-indigo-700 font-bold py-4 px-6 rounded-xl hover:scale-101 active:scale-99 transition-all duration-300 text-center flex items-center justify-center gap-3 cursor-pointer text-sm disabled:opacity-50"
+                >
+                  {isWordGenerating ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Generating Document...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-5 w-5" />
+                      Download Word (Editable DOCX)
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Note */}
@@ -277,7 +283,9 @@ export default function DownloadClient({
               langCode={langCode}
               dict={dict}
               photoUrl={photoUrl}
-              watermark={!isPaid && !template.isFree} // Watermark if premium and unpaid
+              customTemplateUrl={customTemplateUrl}
+              watermark={!isPaid} // Watermark if unpaid (e.g. free templates have watermark)
+              labelMode={labelMode}
             />
           </div>
         </div>

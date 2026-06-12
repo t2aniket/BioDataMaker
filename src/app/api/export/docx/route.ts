@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { BIODATA_FORM_SCHEMA } from '@/i18n/schema';
 import { getTranslations } from '@/i18n/config';
+import { getLabel } from '@/lib/utils';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, BorderStyle, WidthType, HeightRule } from 'docx';
 
 export async function GET(request: Request) {
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
   let isAuthorized = false;
 
   try {
-    // 1. Authorization checks
+    // 1. Authorization checks (DOCX is strictly a paid feature)
     if (orderId) {
       const order = await prisma.order.findUnique({
         where: { id: orderId },
@@ -23,29 +24,22 @@ export async function GET(request: Request) {
 
       if (order && order.status === 'PAID') {
         draftToken = order.draftToken;
-        templateId = order.templateId;
-        isAuthorized = true;
-      }
-    } else if (token) {
-      const draft = await prisma.userDraft.findUnique({
-        where: { draftToken: token },
-      });
-
-      if (draft) {
-        const template = await prisma.template.findUnique({
-          where: { id: draft.selectedTemplateId },
-        });
-
-        if (template && template.isFree) {
-          draftToken = token;
-          templateId = template.id;
+        templateId = order.templateSlug;
+        
+        // Verify template actually supports DOCX export
+        const template = order.template;
+        const exports = Array.isArray(template.supportedExports) 
+          ? template.supportedExports 
+          : JSON.parse(template.supportedExports as string || '[]');
+        
+        if (exports.includes('DOCX') || exports.includes('docx')) {
           isAuthorized = true;
         }
       }
     }
 
     if (!isAuthorized || !draftToken) {
-      return new Response('Unauthorized: Unpaid premium export or invalid token', { status: 403 });
+      return new Response('Unauthorized: DOCX export is strictly a paid feature', { status: 403 });
     }
 
     // 2. Load draft data
@@ -60,9 +54,15 @@ export async function GET(request: Request) {
     const formData = draft.formData as Record<string, any>;
     const lang = draft.selectedLanguage;
     const dict = await getTranslations(lang);
+    const enDict = await getTranslations('en');
+    const fullDict = { ...dict, _en: enDict };
+    const labelMode = draft.labelMode || 'both';
 
     // 3. Construct DOCX programmatically
     const docChildren: any[] = [];
+
+    const uiDict = { ...dict.ui, _en: enDict.ui };
+    const docTitle = getLabel('submit', uiDict, labelMode) || 'BIODATA';
 
     // Title
     docChildren.push(
@@ -71,7 +71,7 @@ export async function GET(request: Request) {
         spacing: { after: 200 },
         children: [
           new TextRun({
-            text: dict.ui?.submit || 'BIODATA',
+            text: docTitle,
             bold: true,
             size: 36, // 18 pt
             color: '1A365D', // Dark Blue
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
           spacing: { before: 240, after: 120 },
           children: [
             new TextRun({
-              text: (dict[section.titleKey] || section.titleKey).toUpperCase(),
+              text: getLabel(section.titleKey, fullDict, labelMode).toUpperCase(),
               bold: true,
               size: 24, // 12 pt
               color: '1A365D', // Dark Blue
@@ -125,7 +125,7 @@ export async function GET(request: Request) {
         const val = formData[field.id];
         if (!val) continue;
 
-        const label = dict[field.dictKey] || field.dictKey;
+        const label = getLabel(field.dictKey, fullDict, labelMode);
 
         tableRows.push(
           new TableRow({

@@ -3,6 +3,8 @@
 import React from 'react';
 import { getFontForLanguage } from '@/lib/fonts';
 import { BIODATA_FORM_SCHEMA } from '@/i18n/schema';
+import { getLabel } from '@/lib/utils';
+
 
 interface BiodataTemplateProps {
   formData: Record<string, any>;
@@ -14,11 +16,14 @@ interface BiodataTemplateProps {
     pattern?: string;
     layout?: string;
     photo?: string;
+    isCustomBackground?: boolean;
   };
   langCode: string;
   dict: any;
   photoUrl?: string;
+  customTemplateUrl?: string;
   watermark?: boolean;
+  labelMode?: string;
 }
 
 export function BiodataTemplate({
@@ -27,7 +32,9 @@ export function BiodataTemplate({
   langCode,
   dict,
   photoUrl,
+  customTemplateUrl,
   watermark = false,
+  labelMode = 'both',
 }: BiodataTemplateProps) {
   const isRtl = langCode === 'ur';
   const fontClass = getFontForLanguage(langCode);
@@ -177,7 +184,7 @@ export function BiodataTemplate({
   const renderField = (fieldId: string, dictKey: string) => {
     const val = formData[fieldId];
     if (!val) return null; // Hide empty fields!
-    const label = dict[dictKey] || dictKey;
+    const label = getLabel(dictKey, dict, labelMode);
 
     return (
       <div key={fieldId} className="flex flex-col sm:flex-row border-b border-gray-100/40 py-2 sm:py-3 text-sm">
@@ -190,6 +197,184 @@ export function BiodataTemplate({
       </div>
     );
   };
+
+  // If custom background template
+  if (templateStyle.isCustomBackground) {
+    const layout = formData.customTemplateLayout || 'center';
+    const showPhoto = layout !== 'text-only' && photoUrl;
+    const uiDict = { ...dict.ui, _en: dict._en?.ui };
+    const docTitle = getLabel('submit', uiDict, labelMode) || 'BIODATA';
+
+    return (
+      <div
+        id="biodata-print-layout"
+        dir={isRtl ? 'rtl' : 'ltr'}
+        className={`print-container relative w-full aspect-[1/1.414] bg-white shadow-2xl mx-auto ${fontClass} overflow-hidden`}
+        style={{
+          boxSizing: 'border-box',
+          maxWidth: '794px', // A4 pixel width at 96 DPI
+          minHeight: '1123px', // A4 pixel height
+        }}
+      >
+        {/* Background Image */}
+        {customTemplateUrl ? (
+          <div className="absolute inset-0 z-0">
+            <img
+              src={customTemplateUrl}
+              alt="Custom Background"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          <div className="absolute inset-0 z-0 bg-slate-50 flex items-center justify-center border-2 border-dashed border-slate-300">
+            <span className="text-slate-400 text-sm font-semibold">Upload your background in Edit fields</span>
+          </div>
+        )}
+
+        {/* Content Container on top */}
+        <div className="relative z-10 h-full w-full p-8 flex flex-col justify-between">
+          <div className="bg-white/95 border border-slate-100/80 backdrop-blur-xs p-6 rounded-2xl shadow-md space-y-6 flex-1 overflow-y-auto max-h-[1000px]">
+            {/* Symbol */}
+            {symbol !== 'None' && (
+              <div className="text-center">
+                {renderSymbol()}
+              </div>
+            )}
+
+            {/* Header */}
+            <div className="text-center">
+              <h1 className="text-2xl font-extrabold tracking-wider uppercase text-slate-800 font-serif">
+                {docTitle}
+              </h1>
+              <div className="h-0.5 w-16 bg-slate-400 mx-auto mt-1" />
+            </div>
+
+            {layout === 'two-column' ? (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Left details (col-span-2) */}
+                <div className="md:col-span-2 space-y-4">
+                  {formData.fullName && (
+                    <div className="border-b border-slate-100 pb-2">
+                      <h2 className="text-xl font-bold text-slate-900">{formData.fullName}</h2>
+                      {formData.maritalStatus && (
+                        <span className="text-2xs font-semibold text-slate-500 uppercase tracking-widest">{formData.maritalStatus}</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    {BIODATA_FORM_SCHEMA.map((section) => {
+                      const hasVisibleFields = section.fields.some((f) => !!formData[f.id]);
+                      if (!hasVisibleFields) return null;
+
+                      return (
+                        <div key={section.id} className="space-y-1">
+                          <h3 className="text-2xs font-extrabold uppercase tracking-widest text-slate-500 border-b border-slate-100 pb-1">
+                            {getLabel(section.titleKey, dict, labelMode)}
+                          </h3>
+                          <div className="space-y-1">
+                            {section.fields.map((field) =>
+                              renderField(field.id, field.dictKey)
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right photo */}
+                {showPhoto && (
+                  <div className="flex flex-col items-center justify-start pt-4">
+                    <div className="h-32 w-32 rounded-xl bg-gray-50 border border-slate-200 shadow-md overflow-hidden relative">
+                      <img
+                        src={photoUrl}
+                        alt="Profile"
+                        className="object-cover"
+                        style={{
+                          transform: `scale(${photoScale}) translate(${photoX}px, ${photoY}px)`,
+                          width: '100%',
+                          height: '100%',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // center or text-only layouts
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row gap-6 items-center justify-between border-b border-slate-100 pb-4">
+                  <div className="flex-1 space-y-1 text-center sm:text-left">
+                    {formData.fullName && (
+                      <h2 className="text-xl sm:text-2xl font-bold text-slate-900">{formData.fullName}</h2>
+                    )}
+                    {formData.maritalStatus && (
+                      <span className="text-2xs font-semibold text-slate-500 uppercase tracking-widest">{formData.maritalStatus}</span>
+                    )}
+                  </div>
+
+                  {showPhoto && (
+                    <div className="h-28 w-28 rounded-xl bg-gray-50 border border-slate-200 shadow-md overflow-hidden relative shrink-0">
+                      <img
+                        src={photoUrl}
+                        alt="Profile"
+                        className="object-cover"
+                        style={{
+                          transform: `scale(${photoScale}) translate(${photoX}px, ${photoY}px)`,
+                          width: '100%',
+                          height: '100%',
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                  {BIODATA_FORM_SCHEMA.map((section) => {
+                    const hasVisibleFields = section.fields.some((f) => !!formData[f.id]);
+                    if (!hasVisibleFields) return null;
+
+                    return (
+                      <div key={section.id} className="space-y-2 col-span-1 md:col-span-2">
+                        <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 border-b border-slate-200 pb-1.5 mb-2 text-left">
+                          {getLabel(section.titleKey, dict, labelMode)}
+                        </h3>
+                        <div className="grid grid-cols-1 gap-x-4">
+                          {section.fields.map((field) =>
+                            renderField(field.id, field.dictKey)
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Watermark */}
+          {watermark && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none rotate-45 select-none z-20">
+              <span className="text-slate-400/35 text-4xl sm:text-6xl font-black uppercase tracking-widest bg-white/40 px-6 py-2 rounded-xl backdrop-blur-xs">
+                Free Biodata Maker
+              </span>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="text-center pt-4 z-10">
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+              {watermark ? 'Created with Free Biodata Maker (freebiodatamaker.com)' : 'freebiodatamaker.com'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const uiDict = { ...dict.ui, _en: dict._en?.ui };
+  const docTitle = getLabel('submit', uiDict, labelMode) || 'BIODATA';
 
   return (
     <div
@@ -257,7 +442,7 @@ export function BiodataTemplate({
           {/* Heading */}
           <div className="text-center space-y-1.5">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wider uppercase text-indigo-950 font-serif">
-              {dict.ui.submit || 'BIODATA'}
+              {docTitle}
             </h1>
             <div className="h-1 w-24 bg-linear-to-r from-amber-500 to-indigo-600 mx-auto rounded-full" />
           </div>
@@ -304,7 +489,7 @@ export function BiodataTemplate({
               return (
                 <div key={section.id} className="space-y-2 col-span-1 md:col-span-2">
                   <h3 className="text-xs font-black uppercase tracking-widest text-indigo-900 border-b-2 border-indigo-100 pb-1.5 mb-2 font-serif text-left">
-                    {dict[section.titleKey] || section.titleKey}
+                    {getLabel(section.titleKey, dict, labelMode)}
                   </h3>
                   <div className="grid grid-cols-1 gap-x-4">
                     {section.fields.map((field) =>

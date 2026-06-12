@@ -9,23 +9,31 @@ import { loadDraftLocal, saveDraftLocal } from '@/lib/draft';
 export default function LanguageSelectorPage() {
   const router = useRouter();
   const [selectedLang, setSelectedLang] = useState<LanguageCode>('en');
+  const [labelMode, setLabelMode] = useState<'en' | 'native' | 'both'>('both');
 
   // Load existing draft configuration if any
   useEffect(() => {
     const draft = loadDraftLocal();
-    if (draft && draft.language) {
-      setSelectedLang(draft.language as LanguageCode);
+    if (draft) {
+      if (draft.language) {
+        setSelectedLang(draft.language as LanguageCode);
+      }
+      if (draft.labelMode) {
+        setLabelMode(draft.labelMode as any);
+      }
     }
   }, []);
 
   const handleProceed = () => {
-    // Save language to local draft
+    // Save language and label mode to local draft
     const draft = loadDraftLocal() || {
       language: selectedLang,
-      templateId: 'simple-clean', // Default template
+      templateId: `${selectedLang}-simple-clean-free`, // Default template slug variant
       formData: {},
     };
     draft.language = selectedLang;
+    draft.labelMode = labelMode;
+    draft.templateId = `${selectedLang}-simple-clean-free`;
     saveDraftLocal(draft);
 
     // Redirect to template gallery
@@ -109,6 +117,40 @@ export default function LanguageSelectorPage() {
                 </button>
               );
             })}
+          </div>
+
+          {/* Label Mode Selector */}
+          <div className="bg-slate-50 p-6 sm:p-8 rounded-3xl border border-slate-100 space-y-4 max-w-2xl mx-auto pt-6">
+            <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider text-center flex items-center justify-center gap-1.5">
+              <Globe className="h-4 w-4 text-indigo-600" />
+              Choose Output Label Mode
+            </h3>
+            <p className="text-xs text-gray-400 text-center">
+              Choose how headings (e.g., Name, Gotra) will appear on the final document:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              {[
+                { id: 'en', title: 'English Only', desc: 'e.g. Name' },
+                { id: 'native', title: 'Regional Only', desc: 'e.g. नाम / नाव' },
+                { id: 'both', title: 'Both English + Regional', desc: 'e.g. Name / नाम' },
+              ].map((mode) => {
+                const isSelected = labelMode === mode.id;
+                return (
+                  <button
+                    key={mode.id}
+                    onClick={() => setLabelMode(mode.id as any)}
+                    className={`p-4 rounded-xl border text-center transition-all duration-200 cursor-pointer ${
+                      isSelected
+                        ? 'border-indigo-600 bg-indigo-50/50 text-indigo-900 shadow-xs'
+                        : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="block text-sm font-bold">{mode.title}</span>
+                    <span className="block text-3xs text-gray-400 font-medium mt-1">{mode.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex justify-center pt-8">

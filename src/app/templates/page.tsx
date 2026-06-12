@@ -20,7 +20,7 @@ export default async function TemplatesPage({ searchParams }: PageProps) {
   // Convert styleConfig and supportedExports to standard objects if they are JSON
   const serializedTemplates = templates.map((t: any) => ({
     ...t,
-    languageSupport: Array.isArray(t.languageSupport) ? t.languageSupport : JSON.parse(t.languageSupport as string),
+    languageSupport: t.languageCode === 'all' ? ['en', 'hi', 'mr', 'gu', 'ta', 'te', 'kn', 'bn', 'pa', 'ur'] : [t.theme === 'custom' ? 'all' : t.languageCode],
     styleConfig: typeof t.styleConfig === 'string' ? JSON.parse(t.styleConfig) : t.styleConfig,
     supportedExports: Array.isArray(t.supportedExports) ? t.supportedExports : JSON.parse(t.supportedExports as string),
   }));

@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
     const serialized = templates.map((t: any) => ({
       ...t,
-      languageSupport: Array.isArray(t.languageSupport) ? t.languageSupport : JSON.parse(t.languageSupport as string),
+      languageSupport: t.languageCode === 'all' ? ['en', 'hi', 'mr', 'gu', 'ta', 'te', 'kn', 'bn', 'pa', 'ur'] : [t.languageCode],
       styleConfig: typeof t.styleConfig === 'string' ? JSON.parse(t.styleConfig) : t.styleConfig,
       supportedExports: Array.isArray(t.supportedExports) ? t.supportedExports : JSON.parse(t.supportedExports as string),
     }));
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { slug, name, category, languageSupport, priceInPaise, isFree, isActive, previewImage, styleConfig, supportedExports } = body;
+    const { slug, name, category, languageCode, priceInPaise, isFree, isActive, previewImage, styleConfig, supportedExports } = body;
 
     if (!slug || !name || !category) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -41,13 +41,16 @@ export async function POST(request: Request) {
         slug,
         name,
         category,
-        languageSupport: languageSupport || [],
+        languageCode: languageCode || 'en',
+        labelModeSupport: ['en', 'native', 'both'],
         priceInPaise: Number(priceInPaise) || 0,
         isFree: !!isFree,
+        requiresPayment: !isFree,
         isActive: isActive !== false,
         previewImage: previewImage || '/templates/simple-clean.jpg',
         styleConfig: styleConfig || {},
         supportedExports: supportedExports || ['IMAGE', 'PDF'],
+        previewModeConfig: {},
       },
     });
 
@@ -66,7 +69,7 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, name, category, languageSupport, priceInPaise, isFree, isActive, styleConfig, supportedExports } = body;
+    const { id, name, category, languageCode, priceInPaise, isFree, isActive, styleConfig, supportedExports } = body;
 
     if (!id) {
       return NextResponse.json({ error: 'Template ID is required' }, { status: 400 });
@@ -77,9 +80,10 @@ export async function PATCH(request: Request) {
       data: {
         name,
         category,
-        languageSupport,
+        languageCode: languageCode !== undefined ? languageCode : undefined,
         priceInPaise: priceInPaise !== undefined ? Number(priceInPaise) : undefined,
         isFree,
+        requiresPayment: isFree !== undefined ? !isFree : undefined,
         isActive,
         styleConfig,
         supportedExports,

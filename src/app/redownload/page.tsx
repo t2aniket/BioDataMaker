@@ -7,28 +7,32 @@ import { ArrowLeft, Search, Loader2, Sparkles, AlertCircle } from 'lucide-react'
 export default function RedownloadPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [contactDetail, setContactDetail] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || !contactDetail.trim()) {
+      setErrorMsg('Both fields are required.');
+      return;
+    }
 
     setIsLoading(true);
     setErrorMsg('');
 
     try {
-      const res = await fetch(`/api/payments/search?query=${encodeURIComponent(searchQuery.trim())}`);
+      const res = await fetch(`/api/payments/search?query=${encodeURIComponent(searchQuery.trim())}&contact=${encodeURIComponent(contactDetail.trim())}`);
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.orderId) {
           router.push(`/download/${data.orderId}`);
         } else {
-          setErrorMsg('Order not found or unpaid. Please verify your reference number.');
+          setErrorMsg('Order not found or contact details do not match.');
         }
       } else {
         const data = await res.json();
-        setErrorMsg(data.error || 'Failed to search order. Please try again.');
+        setErrorMsg(data.error || 'Order not found or contact details do not match.');
       }
     } catch (err) {
       console.error(err);
@@ -78,9 +82,9 @@ export default function RedownloadPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSearch} className="space-y-6">
+          <form onSubmit={handleSearch} className="space-y-5">
             <div className="space-y-2">
-              <label htmlFor="search-input" className="block text-xs font-bold text-gray-400 uppercase tracking-wider">
+              <label htmlFor="search-input" className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
                 Order Number or Payment ID
               </label>
               <div className="relative">
@@ -95,6 +99,21 @@ export default function RedownloadPage() {
                 />
                 <Search className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-400" />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="contact-input" className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                Email Address or Phone Number
+              </label>
+              <input
+                type="text"
+                id="contact-input"
+                required
+                value={contactDetail}
+                onChange={(e) => setContactDetail(e.target.value)}
+                placeholder="Enter email or phone used during payment"
+                className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 outline-hidden text-gray-900 text-sm transition-all"
+              />
             </div>
 
             {errorMsg && (
