@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// UserDraft - Stores temporary biodata while the user is editing
+model UserDraft {
+  id                 String   @id @default(cuid())
+  draftToken         String   @unique
+  selectedLanguage   String
+  selectedTemplateId String
+  formData           Json     // Stores biodata JSON (name, dob, height, family details, etc.)
+  photoUrl           String?  // Optional uploaded photo
+  
+  // Privacy logic: Automatically delete drafts that expire (e.g., after 24-48 hours)
+  expiresAt          DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+// Template - Contains details of available templates
+model Template {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  name             String
+  category         String   // "Simple Clean", "Modern Minimal", "Classic Gold", etc.
+  languageSupport  Json     // Array of supported language codes like ["en", "hi", "mr"]
+  priceInPaise     Int      // e.g., 0 for free, 1000 for Rs 10
+  isFree           Boolean  @default(false)
+  isActive         Boolean  @default(true)
+  previewImage     String
+  styleConfig      Json     // UI style config (colors, fonts, borders)
+  supportedExports Json     // e.g., ["IMAGE", "PDF", "DOCX"]
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  orders           Order[]
+  downloads        Download[]
+}
+
+// Order - Payment and template unlock records
+model Order {
+  id                 String   @id @default(cuid())
+  orderNumber        String   @unique // Human readable order number
+  draftToken         String   // Ties back to the draft that was used to create it
+  templateId         String
+  amountInPaise      Int
+  currency           String   @default("INR")
+  status             String   @default("CREATED") // CREATED, PAID, FAILED, REFUNDED
+  
+  razorpayOrderId    String?  @unique
+  razorpayPaymentId  String?  @unique
+  razorpaySignature  String?
+  
+  // Privacy logic: only store email/phone if user opts in for receiving order details
+  customerEmail      String?
+  customerPhone      String?
+  
+  createdAt          DateTime @default(now())
+  paidAt             DateTime?
+
+  template           Template @relation(fields: [templateId], references: [id])
+  downloads          Download[]
+}
+
+// Download - Tracks generation of final biodata
+model Download {
+  id             String   @id @default(cuid())
+  orderId        String?  // Null for free templates
+  draftToken     String   // Identifies the user session/data
+  templateId     String
+  exportType     String   // IMAGE, PDF, DOCX
+  fileUrl        String?  // S3 or local path if generated and cached
+  downloadCount  Int      @default(0)
+  
+  createdAt      DateTime @default(now())
+
+  order          Order?   @relation(fields: [orderId], references: [id])
+  template       Template @relation(fields: [templateId], references: [id])
+}
+
+// SiteCounter - Global stats like total biodatas created
+model SiteCounter {
+  id        String   @id @default(cuid())
+  key       String   @unique // e.g., "total_biodatas_generated"
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+// AdminUser - Dashboard access
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         String   @default("ADMIN") // ADMIN, SUPERADMIN
+  createdAt    DateTime @default(now())
+}
